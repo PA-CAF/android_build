@@ -22,10 +22,6 @@ $(call project-set-path,qcom-$(2),$(strip $(path)))
 endef
 
 ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
-    B_FAMILY := msm8226 msm8610 msm8974
-    B64_FAMILY := msm8992 msm8994
-    BR_FAMILY := msm8909 msm8916
-    UM_FAMILY := msm8937 msm8953
 
     qcom_flags := -DQCOM_HARDWARE
     qcom_flags += -DQCOM_BSP
@@ -46,22 +42,6 @@ ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
         endif
     endif
 
-    # Allow building audio encoders
-    TARGET_USES_QCOM_MM_AUDIO := true
-
-    # Enable extra offloading for post-805 targets
-    ifneq ($(filter msm8992 msm8994,$(TARGET_BOARD_PLATFORM)),)
-        qcom_flags += -DHAS_EXTRA_FLAC_METADATA
-    endif
-
-    # Enable color metadata for 8xx UM targets
-    ifneq ($(filter msm8996 msm8998,$(TARGET_BOARD_PLATFORM)),)
-        TARGET_USES_COLOR_METADATA := true
-    endif
-
-    # List of targets that use master side content protection
-    MASTER_SIDE_CP_TARGET_LIST := msm8996 msm8998
-
     TARGET_GLOBAL_CFLAGS += $(qcom_flags)
     TARGET_GLOBAL_CPPFLAGS += $(qcom_flags)
     CLANG_TARGET_GLOBAL_CFLAGS += $(qcom_flags)
@@ -73,27 +53,24 @@ ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
     2ND_CLANG_TARGET_GLOBAL_CFLAGS += $(qcom_flags)
     2ND_CLANG_TARGET_GLOBAL_CPPFLAGS += $(qcom_flags)
 
-    ifeq ($(call is-board-platform-in-list, $(B_FAMILY)),true)
-        MSM_VIDC_TARGET_LIST := $(B_FAMILY)
-        QCOM_HARDWARE_VARIANT := msm8974
-    else
-    ifeq ($(call is-board-platform-in-list, $(B64_FAMILY)),true)
-        MSM_VIDC_TARGET_LIST := $(B64_FAMILY)
-        QCOM_HARDWARE_VARIANT := msm8994
-    else
-    ifeq ($(call is-board-platform-in-list, $(BR_FAMILY)),true)
-        MSM_VIDC_TARGET_LIST := $(BR_FAMILY)
-        QCOM_HARDWARE_VARIANT := msm8916
-    else
-    ifeq ($(call is-board-platform-in-list, $(UM_FAMILY)),true)
-        MSM_VIDC_TARGET_LIST := $(UM_FAMILY)
-        QCOM_HARDWARE_VARIANT := msm8937
-    else
-        MSM_VIDC_TARGET_LIST := $(TARGET_BOARD_PLATFORM)
-        QCOM_HARDWARE_VARIANT := $(TARGET_BOARD_PLATFORM)
-    endif
-    endif
-    endif
+    ifeq ($(QCOM_HARDWARE_VARIANT),)
+        ifneq ($(filter msm8610 msm8226 msm8974,$(TARGET_BOARD_PLATFORM)),)
+            QCOM_HARDWARE_VARIANT := msm8974
+        else
+        ifneq ($(filter msm8909 msm8916,$(TARGET_BOARD_PLATFORM)),)
+            QCOM_HARDWARE_VARIANT := msm8916
+        else
+        ifneq ($(filter msm8953 msm8937,$(TARGET_BOARD_PLATFORM)),)
+            QCOM_HARDWARE_VARIANT := msm8937
+        else
+        ifneq ($(filter msm8992 msm8994,$(TARGET_BOARD_PLATFORM)),)
+            QCOM_HARDWARE_VARIANT := msm8994
+        else
+            QCOM_HARDWARE_VARIANT := $(TARGET_BOARD_PLATFORM)
+        endif
+        endif
+        endif
+        endif
     endif
 
 # HACK: check to see if build uses standard QC HAL paths by checking for CM path structure
@@ -136,7 +113,7 @@ else
 
 $(call project-set-path,qcom-audio,hardware/qcom/audio/default)
 $(call project-set-path,qcom-display,hardware/qcom/display/$(TARGET_BOARD_PLATFORM))
-$(call project-set-path,qcom-media,hardware/qcom/media/$(TARGET_BOARD_PLATFORM))
+$(call project-set-path,qcom-media,hardware/qcom/media/default)
 
 $(call project-set-path,qcom-camera,hardware/qcom/camera)
 $(call project-set-path,qcom-gps,hardware/qcom/gps)
