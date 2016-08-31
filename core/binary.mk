@@ -33,22 +33,6 @@ endif
 
 my_soong_problems :=
 
-# The proper dependency for kernel headers is INSTALLED_KERNEL_HEADERS.
-# However, there are many instances of the old style dependencies in the
-# source tree.  Fix them up and warn the user.
-ifneq (,$(findstring $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr,$(LOCAL_ADDITIONAL_DEPENDENCIES)))
-  LOCAL_ADDITIONAL_DEPENDENCIES := $(patsubst $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr,INSTALLED_KERNEL_HEADERS,$(LOCAL_ADDITIONAL_DEPENDENCIES))
-endif
-
-# Many qcom modules don't correctly set a dependency on the kernel headers. Fix it for them,
-# but warn the user.
-ifneq (,$(findstring $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include,$(LOCAL_C_INCLUDES)))
-  ifeq (,$(findstring $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr,$(LOCAL_ADDITIONAL_DEPENDENCIES)))
-    $(warning $(LOCAL_MODULE) uses kernel headers, but does not depend on them!)
-    LOCAL_ADDITIONAL_DEPENDENCIES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
-  endif
-endif
-
 # The following LOCAL_ variables will be modified in this file.
 # Because the same LOCAL_ variables may be used to define modules for both 1st arch and 2nd arch,
 # we can't modify them in place.
@@ -423,9 +407,7 @@ endif
 ifeq ($(SDCLANG),true)
     ifeq ($(my_sdclang),)
         ifneq ($(my_sdclang_2),true)
-            ifeq ($(TARGET_USE_SDCLANG),true)
-                my_sdclang := true
-            endif
+            my_sdclang := true
         endif
     endif
 endif
@@ -543,32 +525,10 @@ ifneq ($(filter true always, $(LOCAL_FDO_SUPPORT)),)
     my_cflags += $($(LOCAL_2ND_ARCH_VAR_PREFIX)TARGET_FDO_OPTIMIZE_CFLAGS)
     my_fdo_build := true
   endif
-  # Disable ccache (or other compiler wrapper) except gomacc, unless
-  # it can handle -fprofile-use properly.
-
-  # ccache supports -fprofile-use as of version 3.2. Parse the version output
-  # of each wrapper to determine if it's ccache 3.2 or newer.
-  is_cc_ccache := $(shell if [ "`$(my_cc_wrapper) -V 2>/dev/null | head -1 | cut -d' ' -f1`" = ccache ]; then echo true; fi)
-  ifeq ($(is_cc_ccache),true)
-    cc_ccache_version := $(shell $(my_cc_wrapper) -V | head -1 | grep -o '[[:digit:]]\+\.[[:digit:]]\+')
-    vmajor := $(shell echo $(cc_ccache_version) | cut -d'.' -f1)
-    vminor := $(shell echo $(cc_ccache_version) | cut -d'.' -f2)
-    cc_ccache_ge_3_2 = $(shell if [ $(vmajor) -gt 3 -o $(vmajor) -eq 3 -a $(vminor) -ge 2 ]; then echo true; fi)
-  endif
-  is_cxx_ccache := $(shell if [ "`$(my_cxx_wrapper) -V 2>/dev/null | head -1 | cut -d' ' -f1`" = ccache ]; then echo true; fi)
-  ifeq ($(is_cxx_ccache),true)
-    cxx_ccache_version := $(shell $(my_cxx_wrapper) -V | head -1 | grep -o '[[:digit:]]\+\.[[:digit:]]\+')
-    vmajor := $(shell echo $(cxx_ccache_version) | cut -d'.' -f1)
-    vminor := $(shell echo $(cxx_ccache_version) | cut -d'.' -f2)
-    cxx_ccache_ge_3_2 = $(shell if [ $(vmajor) -gt 3 -o $(vmajor) -eq 3 -a $(vminor) -ge 2 ]; then echo true; fi)
-  endif
-
-  ifneq ($(cc_ccache_ge_3_2),true)
-    my_cc_wrapper := $(filter $(GOMA_CC),$(my_cc_wrapper))
-  endif
-  ifneq ($(cxx_ccache_ge_3_2),true)
-    my_cxx_wrapper := $(filter $(GOMA_CC),$(my_cxx_wrapper))
-  endif
+  # Disable ccache (or other compiler wrapper) except gomacc, which
+  # can handle -fprofile-use properly.
+  my_cc_wrapper := $(filter $(GOMA_CC),$(my_cc_wrapper))
+  my_cxx_wrapper := $(filter $(GOMA_CC),$(my_cxx_wrapper))
 endif
 
 ###########################################################
@@ -613,18 +573,18 @@ my_target_global_cppflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLO
 my_target_global_ldflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLOBAL_LDFLAGS)
 ifeq ($(my_sdclang),true)
     ifeq ($(strip $(my_cc)),)
-        my_cc := $(my_cc_wrapper) $(SDCLANG_PATH)/clang
+        my_cc := $(SDCLANG_PATH)/clang
     endif
     ifeq ($(strip $(my_cxx)),)
-        my_cxx := $(my_cc_wrapper) $(SDCLANG_PATH)/clang++
+        my_cxx := $(SDCLANG_PATH)/clang++
     endif
 endif
 ifeq ($(my_sdclang_2),true)
     ifeq ($(strip $(my_cc)),)
-        my_cc := $(my_cc_wrapper) $(SDCLANG_PATH_2)/clang
+        my_cc := $(SDCLANG_PATH_2)/clang
     endif
     ifeq ($(strip $(my_cxx)),)
-        my_cxx := $(my_cc_wrapper) $(SDCLANG_PATH_2)/clang++
+        my_cxx := $(SDCLANG_PATH_2)/clang++
     endif
 endif
 else
