@@ -366,6 +366,22 @@ my_target_global_conlyflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_TARGET_GLOBAL
 my_target_global_cppflags += $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_TARGET_GLOBAL_CPPFLAGS)
 my_target_global_ldflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_TARGET_GLOBAL_LDFLAGS)
     ifeq ($(my_sdclang),true)
+        SDCLANG_PRECONFIGURED_FLAGS := -Wno-vectorizer-no-neon
+
+        ifeq ($(LOCAL_SDCLANG_LTO), true)
+        ifneq ($(LOCAL_MODULE_CLASS), STATIC_LIBRARIES)
+
+            ifeq ($(strip $(LOCAL_SDCLANG_LTO_LDFLAGS)),)
+                LOCAL_SDCLANG_LTO_LDFLAGS := $(SDCLANG_COMMON_FLAGS)
+            endif
+
+            SDCLANG_PRECONFIGURED_FLAGS += -fuse-ld=qcld -flto
+            my_target_global_ldflags += -fuse-ld=qcld -flto $(LOCAL_SDCLANG_LTO_LDFLAGS)
+        endif
+        endif
+        my_target_global_cflags += $(SDCLANG_COMMON_FLAGS) $(SDCLANG_PRECONFIGURED_FLAGS)
+        SDCLANG_PRECONFIGURED_FLAGS :=
+
         ifeq ($(strip $(my_cc)),)
             my_cc := $(SDCLANG_PATH)/clang $(SDLLVM_AE_FLAG) -Wno-vectorizer-no-neon
         endif
