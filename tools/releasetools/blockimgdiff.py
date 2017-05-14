@@ -1000,11 +1000,8 @@ class BlockImageDiff(object):
       heap.append(xf.heap_item)
     heapq.heapify(heap)
 
-    # Use OrderedDict() instead of set() to preserve the insertion order. Need
-    # to use 'sinks[key] = None' to add key into the set. sinks will look like
-    # { key1: None, key2: None, ... }.
-    sinks = OrderedDict.fromkeys(u for u in G if not u.outgoing)
-    sources = OrderedDict.fromkeys(u for u in G if not u.incoming)
+    sinks = set(u for u in G if not u.outgoing)
+    sources = set(u for u in G if not u.incoming)
 
     def adjust_score(iu, delta):
       iu.score += delta
@@ -1015,28 +1012,26 @@ class BlockImageDiff(object):
     while G:
       # Put all sinks at the end of the sequence.
       while sinks:
-        new_sinks = OrderedDict()
+        new_sinks = set()
         for u in sinks:
           if u not in G: continue
           s2.appendleft(u)
           del G[u]
           for iu in u.incoming:
             adjust_score(iu, -iu.outgoing.pop(u))
-            if not iu.outgoing:
-              new_sinks[iu] = None
+            if not iu.outgoing: new_sinks.add(iu)
         sinks = new_sinks
 
       # Put all the sources at the beginning of the sequence.
       while sources:
-        new_sources = OrderedDict()
+        new_sources = set()
         for u in sources:
           if u not in G: continue
           s1.append(u)
           del G[u]
           for iu in u.outgoing:
             adjust_score(iu, +iu.incoming.pop(u))
-            if not iu.incoming:
-              new_sources[iu] = None
+            if not iu.incoming: new_sources.add(iu)
         sources = new_sources
 
       if not G: break
@@ -1055,13 +1050,11 @@ class BlockImageDiff(object):
       del G[u]
       for iu in u.outgoing:
         adjust_score(iu, +iu.incoming.pop(u))
-        if not iu.incoming:
-          sources[iu] = None
+        if not iu.incoming: sources.add(iu)
 
       for iu in u.incoming:
         adjust_score(iu, -iu.outgoing.pop(u))
-        if not iu.outgoing:
-          sinks[iu] = None
+        if not iu.outgoing: sinks.add(iu)
 
     # Now record the sequence in the 'order' field of each transfer,
     # and by rearranging self.transfers to be in the chosen sequence.
@@ -1080,7 +1073,8 @@ class BlockImageDiff(object):
 
     # Each item of source_ranges will be:
     #   - None, if that block is not used as a source,
-    #   - an ordered set of transfers.
+    #   - a transfer, if one transfer uses it as a source, or
+    #   - a set of transfers.
     source_ranges = []
     for b in self.transfers:
       for s, e in b.src_ranges:
@@ -1088,19 +1082,23 @@ class BlockImageDiff(object):
           source_ranges.extend([None] * (e-len(source_ranges)))
         for i in range(s, e):
           if source_ranges[i] is None:
-            source_ranges[i] = OrderedDict.fromkeys([b])
+            source_ranges[i] = b
           else:
-            source_ranges[i][b] = None
+            if not isinstance(source_ranges[i], set):
+              source_ranges[i] = set([source_ranges[i]])
+            source_ranges[i].add(b)
 
     for a in self.transfers:
-      intersections = OrderedDict()
+      intersections = set()
       for s, e in a.tgt_ranges:
         for i in range(s, e):
           if i >= len(source_ranges): break
-          # Add all the Transfers in source_ranges[i] to the (ordered) set.
-          if source_ranges[i] is not None:
-            for j in source_ranges[i]:
-              intersections[j] = None
+          b = source_ranges[i]
+          if b is not None:
+            if isinstance(b, set):
+              intersections.update(b)
+            else:
+              intersections.add(b)
 
       for b in intersections:
         if a is b: continue
