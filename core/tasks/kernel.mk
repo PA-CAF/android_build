@@ -110,28 +110,17 @@ else
   endif
 endif
 
-ifeq ($(TARGET_PREBUILT_KERNEL),)
-    FULL_KERNEL_BUILD := true
-else
-    ifneq "$(wildcard $(TARGET_KERNEL_SOURCE) )" ""
-        ifneq ($(TARGET_KERNEL_CONFIG),)
-            $(warning ******************************************************************)
-            $(warning * A prebuilt Kernel was found, but the board configuration       *)
-            $(warning * defines TARGET_KERNEL_SOURCE and TARGET_KERNEL_CONFIG.         *)
-            $(warning * Allowing full Kernel image and headers to build from source,   *)
-            $(warning * even though you MAY WANT to define some rules to properly      *)
-            $(warning * pack the boot image using the prebuilt Kernel.                 *)
-            $(warning ******************************************************************)
-            FULL_KERNEL_BUILD := true
-        endif
-    endif
-endif
+TARGET_PREBUILT_INT_KERNEL := $(KERNEL_OUT)/arch/$(KERNEL_ARCH)/boot/$(TARGET_PREBUILT_INT_KERNEL_TYPE)
 
-ifeq ($(FULL_KERNEL_BUILD),true)
+# Clear this first to prevent accidental poisoning from env
+MAKE_FLAGS :=
 
-KERNEL_GCC_NOANDROID_CHK := $(shell (echo "int main() {return 0;}" | $(KERNEL_CROSS_COMPILE)gcc -E -mno-android - > /dev/null 2>&1 ; echo $$?))
-ifeq ($(strip $(KERNEL_GCC_NOANDROID_CHK)),0)
-KERNEL_CFLAGS := KCFLAGS=-mno-android
+ifeq ($(KERNEL_ARCH),arm64)
+  # Avoid "unsupported RELA relocation: 311" errors (R_AARCH64_ADR_GOT_PAGE)
+  MAKE_FLAGS += CFLAGS_MODULE="-fno-pic"
+  ifeq ($(TARGET_ARCH),arm)
+    KERNEL_CONFIG_OVERRIDE := CONFIG_ANDROID_BINDER_IPC_32BIT=y
+  endif
 endif
 
 ifneq ($(TARGET_KERNEL_ADDITIONAL_CONFIG),)
