@@ -472,6 +472,3 @@ endif
 ifeq ($(USE_CLANG_PLATFORM_BUILD),)
 USE_CLANG_PLATFORM_BUILD := true
 endif
-
-# Set up dex-preoptimization recommended values.
-include $(BUILD_SYSTEM)/dex_definition.mk
