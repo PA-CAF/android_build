@@ -1541,6 +1541,24 @@ function godir () {
     \cd $T/$pathname
 }
 
+function mka() {
+    CROOTD=$(pwd)
+    croot
+
+    case `uname -s` in
+        Darwin)
+            make -j `sysctl hw.ncpu|cut -d" " -f2` "$@"
+            ;;
+        *)
+            schedtool -B -n 1 -e ionice -n 1 make -j$(cat /proc/cpuinfo | grep "^processor" | wc -l) "$@"
+            ;;
+    esac
+    RETVAL=$?
+
+    cd "$CROOTD"
+    return $RETVAL
+}
+
 # Force JAVA_HOME to point to java 1.7/1.8 if it isn't already set.
 function set_java_home() {
     # Clear the existing JAVA_HOME value if we set it ourselves, so that
