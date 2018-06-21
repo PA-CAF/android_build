@@ -406,7 +406,6 @@ $(INSTALLED_VENDOR_BUILD_PROP_TARGET): $(VENDOR_BUILDINFO_SH) $(intermediate_sys
 	$(hide) $(foreach line,$(FINAL_VENDOR_BUILD_PROPERTIES), \
 		echo "$(line)" >> $@;)
 	$(hide) build/tools/post_process_props.py $@
-endif  # property_overrides_split_enabled
 endif  # TARGET_COPY_OUT_VENDOR=system
 
 # ----------------------------------------------------------------
